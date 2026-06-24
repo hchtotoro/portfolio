@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A/B 实验的基础原理与完整流程 · HCHTOTORO</title>
+<meta name="description" content="从假设构建到统计推断，系统梳理 A/B 实验的标准流程与背后的统计学原理。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpolygon points='50,18 86,82 14,82' fill='%231F7A6C'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700&family=Noto+Sans+SC:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F3F5F4;
+    --paper-raised:#FFFFFF;
+    --ink:#15202B;
+    --muted:#6B7280;
+    --signal:#1F7A6C;
+    --signal-soft:#DCEEE9;
+    --line:#D8DDD9;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:'Noto Sans SC', sans-serif; line-height:1.7;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--ink); text-decoration:none;}
+  a:focus-visible{outline:2px solid var(--signal); outline-offset:3px;}
+  .wrap{max-width:680px; margin:0 auto; padding:0 24px;}
+
+  .topbar{
+    position:sticky; top:0; z-index:10;
+    background:rgba(243,245,244,0.92); backdrop-filter:blur(6px);
+    border-bottom:1px solid var(--line);
+  }
+  .topbar .wrap{
+    max-width:880px;
+    display:flex; align-items:center; justify-content:space-between; height:56px;
+  }
+  .wordmark{font-family:'IBM Plex Mono', monospace; font-size:13px; font-weight:600; letter-spacing:0.06em; color:var(--ink);}
+  .wordmark span{color:var(--signal);}
+  .back-link{font-size:13.5px; color:var(--muted);}
+  .back-link:hover{color:var(--signal);}
+
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace; font-size:12.5px;
+    letter-spacing:0.12em; color:var(--signal);
+    display:block; margin-bottom:16px;
+  }
+  article{padding:56px 0 80px;}
+  h1{
+    font-family:'Noto Serif SC', serif; font-size:30px; font-weight:700;
+    line-height:1.4; margin:0 0 16px;
+  }
+  .art-meta{
+    font-family:'IBM Plex Mono', monospace; font-size:12.5px;
+    color:var(--muted); margin-bottom:40px;
+    padding-bottom:24px; border-bottom:1px solid var(--line);
+  }
+  .art-body h2{
+    font-family:'Noto Serif SC', serif; font-size:22px; font-weight:700;
+    margin:48px 0 14px;
+  }
+  .art-body h3{
+    font-family:'Noto Serif SC', serif; font-size:18px; font-weight:700;
+    color:var(--ink); margin:32px 0 10px;
+  }
+  .art-body h4{
+    font-family:'Noto Sans SC', sans-serif; font-size:16px; font-weight:700;
+    color:var(--signal); margin:24px 0 8px;
+  }
+  .art-body p{font-size:16px; color:#2c3744; margin:0 0 18px; line-height:1.8;}
+  .art-body strong{color:var(--ink);}
+  .art-body ul, .art-body ol{margin:0 0 18px; padding-left:20px;}
+  .art-body li{font-size:16px; color:#2c3744; margin-bottom:8px; line-height:1.8;}
+  .art-body blockquote{
+    margin:24px 0; padding:16px 20px;
+    background:var(--signal-soft);
+    border-left:3px solid var(--signal);
+    border-radius:0 var(--radius) var(--radius) 0;
+  }
+  .art-body blockquote p{margin:0 0 10px; font-size:15px;}
+  .art-body blockquote p:last-child{margin:0;}
+  .art-body blockquote ul{margin:8px 0 0; padding-left:20px;}
+  .art-body blockquote li{font-size:15px; margin-bottom:6px;}
+  .art-body code{
+    font-family:'IBM Plex Mono', monospace; font-size:14px;
+    background:#e8eded; color:var(--ink);
+    padding:2px 6px; border-radius:4px;
+  }
+  .art-body pre{
+    background:#1e2b2a; color:#d4e8e4;
+    font-family:'IBM Plex Mono', monospace; font-size:13.5px;
+    padding:20px 22px; border-radius:var(--radius);
+    margin:0 0 18px; overflow-x:auto; line-height:1.6;
+  }
+  .art-body pre code{background:none; color:inherit; padding:0;}
+
+  .art-next{
+    margin-top:48px; padding:24px 26px;
+    border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--paper-raised);
+  }
+  .art-next .eyebrow{margin-bottom:8px;}
+  .art-next p{margin:0; font-size:14.5px; color:var(--muted);}
+
+  @media (max-width:640px){
+    h1{font-size:25px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap">
+    <a class="wordmark" href="index.html">Δ <span>Data × AI × Evals × Business</span></a>
+    <a class="back-link" href="index.html#series">← 返回首页</a>
+  </div>
+</div>
+
+<article>
+  <div class="wrap">
+    <span class="eyebrow">A/B Testing & 因果推断 · 基础原理</span>
+    <h1>A/B 实验的基础原理与完整流程</h1>
+    <div class="art-meta">2026年6月 · 阅读约 15 分钟</div>
+
+    <div class="art-body">
+      <p>A/B 实验是数据科学家在业务中最常用的因果推断工具。它通过随机化分流，在统计意义上让实验组与对照组在所有可观测与不可观测的协变量上保持期望一致，从而把"两组指标的差异"干净地归因到我们引入的干预上。</p>
+
+      <p>这篇文章系统梳理 A/B 实验的标准流程与背后的统计学原理。从实际的业务问题出发，整个流程沿着「实验前 → 实验中 → 实验后」三段展开，每个环节既包括实验流程如何设计，也包含对应的统计学依据。文末整理了一份实战 FAQ，覆盖实验过程中的经典问题。</p>
+
+      <blockquote>
+        <p><strong>贯穿全文的示例</strong>：电商 App 新人落地页的"领取入口"按钮文案优化</p>
+        <ul>
+          <li><strong>对照组（A）</strong>：原版文案「立即领取新人礼」</li>
+          <li><strong>实验组（B）</strong>：新版文案「领取你的专属新人礼包」</li>
+          <li><strong>核心指标</strong>：点击率（CTR），即点击按钮 / 落地页 UV</li>
+          <li><strong>历史基线</strong>：CTR 约 8%</li>
+          <li><strong>业务期望</strong>：CTR 至少提升 0.5 个百分点（从 8% 提升至 8.5%）</li>
+        </ul>
+        <p>以下所有环节均围绕这个实验展开。</p>
+      </blockquote>
+
+      <h2>实验前：定义问题，明确业务假设</h2>
+
+      <p>实验前的全部工作，本质上是把一个业务问题翻译成一个可被统计学回答的问题。这一步需要定义清楚问题，同时提出业务假设。</p>
+
+      <h3>第一步：构建原假设与备择假设</h3>
+
+      <p>A/B 实验的核心是<strong>假设检验（Hypothesis Testing）</strong>。首先，我们要把业务问题写成两条对立的假设：</p>
+
+      <ul>
+        <li><strong>原假设 H₀（Null Hypothesis）</strong>：新版文案对 CTR 没有影响，即 p_B = p_A</li>
+        <li><strong>备择假设 H₁（Alternative Hypothesis）</strong>：新版文案对 CTR 有影响，即 p_B ≠ p_A</li>
+      </ul>
+
+      <p>需要明确的是：实验的结论并不是"证明 H₁"，而是"<em>在多大程度上有证据拒绝 H₀</em>"。统计学的逻辑是反证式的——只有当观测数据在 H₀ 成立的假设下显得足够"反常"，我们才有理由拒绝 H₀。这是 p 值的真正含义所在，后文会进一步展开。</p>
+
+      <h3>第二步：定义指标体系</h3>
+
+      <p>一个成熟的 A/B 实验通常包含三类指标，各自承担不同的判断职能：</p>
+
+      <ul>
+        <li><strong>主指标（Primary Metric）</strong>：实验最终结论所依据的核心指标。主指标必须在实验启动前唯一确定，事后不能更换。</li>
+        <li><strong>过程指标（Secondary Metric）</strong>：帮助理解策略作用机制的中间指标。用于在主指标显著或不显著时辅助归因。</li>
+        <li><strong>围栏指标（Guardrail Metric）</strong>：用于监控策略是否产生了不可接受的负向影响。</li>
+      </ul>
+
+      <h3>第三步：确定显著性水平、统计功效与 MDE</h3>
+
+      <p>样本量测算依赖三个核心统计参数：</p>
+
+      <ul>
+        <li><strong>显著性水平 α</strong>：第一类错误（Type I Error）的容忍上限——即"原假设为真时，我们错误地拒绝它"的概率。行业惯例 α = 0.05。</li>
+        <li><strong>统计功效 1−β</strong>：第二类错误（Type II Error）的反面——即"备择假设为真时，我们能正确拒绝原假设"的概率。行业惯例取 0.8。</li>
+        <li><strong>最小可检测效应 MDE（Minimum Detectable Effect）</strong>：实验在给定 α、功效下能够稳定检出的最小效应量。本例中 MDE = 0.5 个百分点，对应业务可接受的最小提升幅度。</li>
+      </ul>
+
+      <p>需要强调的是，<strong>MDE 是从业务侧反推出来的</strong>——通常等于"策略上线后至少涨多少，才值得做"。这个值由业务方与数据团队结合历史经验、ROI 测算共同确定。</p>
+
+      <p>设定 MDE 之后，统计学的角色是回答："如果效应真的达到了这个水平，实验有 80% 的概率能识别出来。"MDE 越小，所需样本量越大——所以 MDE 的设定本质是在"业务可接受的最小提升"与"实验可承受的样本成本"之间做平衡。</p>
+
+      <h3>第四步：测算样本量</h3>
+
+      <p>实际工作中，我们通常关心的是两组比例（如 CTR）或两组均值（如人均时长）的差异。在样本量足够大时，由<strong>中心极限定理（Central Limit Theorem）</strong>，样本统计量近似服从正态分布，因此可以使用 <strong>z 检验</strong>进行假设检验。</p>
+
+      <p>本例中，CTR 是比例型指标，对照组与实验组的点击次数服从二项分布，在样本量充分的前提下，两组比例差异 (p̂_B − p̂_A) 近似服从正态分布，适用双侧 z 检验。每组所需样本量近似为：</p>
+
+      <pre><code>n = (z_{1-α/2} + z_{1-β})² × [p_A(1-p_A) + p_B(1-p_B)] / (p_B - p_A)²</code></pre>
+
+      <p>代入本例参数：α = 0.05（z₀.₉₇₅ ≈ 1.96）、1−β = 0.8（z₀.₈ ≈ 0.84）、p_A = 0.08、p_B = 0.085，计算得每组所需样本量约 4.5 万，实验总样本量约 9 万。</p>
+
+      <p>结合落地页日均 UV，即可推算出所需实验周期：</p>
+
+      <blockquote>
+        <p><strong>实验周期 = 实验总样本量 / （日均 UV × 实验流量占比）</strong></p>
+      </blockquote>
+
+      <p>在样本量推算的基础上，还需要看是否覆盖完整的自然周——用户行为在周内和周末存在系统性差异，实验周期跨越完整自然周可以避免因日期结构带来的偏差。综合样本量需求与自然周覆盖，确定最终的实验周期。</p>
+
+      <p>例如，假设本例落地页日均 UV 为 3 万、实验流量占比 50%，代入公式得到实验周期约为 9 万 /（3 万 × 50%）= 6 天。综合样本量需求与自然周覆盖，本例的最终实验周期可定为 7 天。</p>
+
+      <h3>第五步：AA 测试，验证分流系统的健康度</h3>
+
+      <p>正式实验上线前，通常会先做一次 <strong>AA 测试</strong>：把全部流量按相同的分流方式拆成两组，但两组展示完全相同的策略（均为原版文案 A）。理论上，两组的主指标差异应当不显著，p 值近似服从均匀分布。</p>
+
+      <p>AA 测试的目的不是验证"策略有效"，而是验证<strong>分流系统本身没有偏差</strong>——包括随机化哈希函数是否均匀、流量灰度是否符合预期、数据上报链路是否一致。</p>
+
+      <p>如果 AA 阶段出现显著差异，有两种可能：一是抽样误差导致的偶然现象（在 α = 0.05 下本就有 5% 的发生概率），二是分流系统存在系统性偏差。具体属于哪一种，需要通过多次 AA 复现、样本比率（SRM）检验、关键协变量分布对比等手段进一步排查（详见文末 FAQ Q1）。在排除分流问题之前，不应直接进入 A/B 实验阶段。</p>
+
+      <h2>实验中：保证分流与监控的可信度</h2>
+
+      <h3>分流单元的选择</h3>
+
+      <p>分流的核心原则：<strong>同一个分流单元在整个实验周期内必须接受稳定的处理</strong>。这是 SUTVA（稳定个体处理值假设，Stable Unit Treatment Value Assumption）的基本要求。</p>
+
+      <p>落地页文案场景下，以"用户级"（基于 user_id 或设备 id 的哈希）作为分流单元——保证同一用户在多次访问中始终看到同一版本，体验一致，且行为数据可在用户维度干净归因。</p>
+
+      <h3>样本比率监控：SRM 检查</h3>
+
+      <p>实验上线后，要立即开始监控两组的实际样本比率是否符合设计预期（本例 50:50）。如果发生明显偏离，即<strong>样本比率偏差（SRM，Sample Ratio Mismatch）</strong>，后续所有的效应估计都不再可信——因为两组在事前已经不可比。</p>
+
+      <p>SRM 通常用卡方检验进行判定。常见原因包括：分流哈希函数 bug、客户端日志上报丢失、灰度配置错误、异常流量冲击。一旦检出 SRM，正确的做法是<strong>暂停实验、排查根因、修复后重启</strong>，而不是继续累计样本。</p>
+
+      <h3>不要中途偷看结果（Peeking Problem）</h3>
+
+      <p>实验进行中，人天然会想"现在差异显著了吗？能不能提前结束？"——这是 A/B 实验里一个常见的陷阱。</p>
+
+      <p>当我们设定 α = 0.05 时，这个阈值是<strong>基于"在预定样本量到达后只做一次检验"</strong>这一前提推导出来的。如果在实验过程中反复进行显著性检验，每检验一次，假阳性概率就会累积叠加——实际的第一类错误率会远高于 0.05。这就是<strong>窥视问题（Peeking Problem）</strong>。</p>
+
+      <p>正确的做法有两种：其一，严格按预定样本量执行，中途不提前下结论；其二，如果业务确实需要中途观测，使用<strong>序贯检验（Sequential Testing）</strong>或 <strong>α 修正方法（如 Pocock、O'Brien-Fleming）</strong>，在统计方法层面对累积检验做出调整。</p>
+
+      <h2>实验后：从数据到结论的统计推断</h2>
+
+      <h3>显著性检验</h3>
+
+      <p>样本量达到后，对两组的主指标进行<strong>假设检验</strong>，判断观测到的差异是否在统计意义上显著：</p>
+
+      <ol>
+        <li>根据指标类型选择对应的检验方法。比例型指标（如点击率、留存率、转化率）常用 z 检验或卡方检验；均值型指标（如人均时长、人均消费金额）常用 t 检验或 z 检验（大样本下两者等价）；<strong>非正态分布或小样本</strong>场景可使用非参数检验（如 Mann-Whitney U 检验）或自助法（Bootstrap）。</li>
+        <li>计算检验统计量，得到对应的 p 值。</li>
+        <li>比较 p 值与预先设定的显著性水平 α：若 p &lt; α，则拒绝 H₀，认为两组差异在统计意义上显著；否则不拒绝 H₀，即没有足够证据说明两组存在差异。</li>
+      </ol>
+
+      <p>回到本例。CTR 是比例型指标，在大样本下两组比例差异 (p̂_B − p̂_A) 近似服从正态分布，适用双侧 z 检验，统计量为：</p>
+
+      <pre><code>z = (p̂_B - p̂_A) / √[ p̂(1-p̂)(1/n_A + 1/n_B) ]</code></pre>
+
+      <p>其中 p̂ 为两组合并的样本比例。将 z 值通过标准正态分布转换为 p 值，若 p &lt; 0.05，则拒绝 H₀，认为新版文案对 CTR 有显著影响。</p>
+
+      <h3>p 值的正确解读</h3>
+
+      <p>p 值是一个极其容易被误读的概念。其严格定义是：<strong>在原假设 H₀ 成立的前提下，观测到当前或更极端结果的概率</strong>。</p>
+
+      <p>它<em>不是</em>"H₀ 为真的概率"，也<em>不是</em>"新策略有效的概率"。p = 0.03 的正确解读是："如果新文案真的对 CTR 毫无影响，我们观测到当前数据（或更极端数据）的概率只有 3%——而这个观测结果足够反常，是一个小概率事件，因此我们拒绝 H₀。"</p>
+
+      <h3>置信区间：量化效应的区间与方向</h3>
+
+      <p>仅报告"显著 / 不显著"会丢失效应大小、效应方向、效应稳定性等关键信息。<strong>完整的做法是同时报告效应量（Effect Size）及其置信区间（Confidence Interval）</strong>。例如两组比例差异 Δp 的 95% 置信区间为：</p>
+
+      <pre><code>Δp̂ ± z_{1-α/2} × √[ p̂_A(1-p̂_A)/n_A + p̂_B(1-p̂_B)/n_B ]</code></pre>
+
+      <p>假设实验结果为 Δp̂ = 0.6%，95% CI = [0.2%, 1.0%]，则可以同时回答三个问题：策略是否显著（CI 不包含 0）、效应方向（正向）、效应量级（0.2%–1.0% 之间）。这可以为业务带来更多的决策依据。</p>
+
+      <h3>多重检验问题</h3>
+
+      <p>实际工作中，我们往往不只看一个指标——主指标、过程指标、围栏指标加起来可能有 5–10 个。每个指标在 α = 0.05 下都有 5% 的假阳性概率，看的指标越多，至少出现一个假阳性的累积概率越高。</p>
+
+      <p>例如，同时检验 10 个相互独立的指标，在 H₀ 全部成立的前提下，至少出现一个"显著"结果的概率为 1 − (1 − 0.05)¹⁰ ≈ 40%。</p>
+
+      <p>常见的修正方法是 <strong>Bonferroni 校正</strong>（将 α 除以指标个数）或 <strong>FDR 控制</strong>（Benjamini-Hochberg 方法）。在主指标 + 围栏指标的标准结构下，主指标用原始 α，围栏指标可适当放宽，实践中需要根据业务容忍度具体设计。</p>
+
+      <h3>从"统计显著"到"业务决策"</h3>
+
+      <p>统计显著与业务价值是两件事。一个 p = 0.001 的结果，如果效应量只有 0.05%，在业务上未必值得上线——尤其考虑到实施成本、维护成本与机会成本。</p>
+
+      <p>反过来，<strong>不显著也不等于没效果</strong>——可能是样本量不足、MDE 设得过小、或策略只对部分子群体有效。结论应当结合效应量、置信区间、子群体表现综合判断，而非机械地以 p &lt; 0.05 作为唯一标准。</p>
+
+      <h2>实战 FAQ：开实验时常见的几个问题</h2>
+
+      <p>下面整理几个在真实实验过程中高频出现的具体问题，每个问题按「现象 → 原因 → 应对」三段式给出处理路径，作为本文的实战补充。</p>
+
+      <h3>Q1. AA 测试显著了，是不是分流系统出问题了？</h3>
+
+      <p><strong>现象</strong>：正式实验前跑了一次 AA 测试，两组用同样的策略，结果主指标的 p 值小于 0.05，出现"显著差异"。</p>
+
+      <p><strong>原因</strong>：AA 显著本身不必然代表分流系统有 bug。在 α = 0.05 的设定下，即使分流完全均匀、两组分布完全一致，也仍然有 5% 的概率会因为抽样误差出现假阳性——这正是第一类错误的统计学定义。如果连续做 20 次 AA，期望中就会有 1 次显著。</p>
+
+      <p><strong>应对</strong>：不要因为一次 AA 显著就否定整个分流系统。正确的做法是——其一，重复多次 AA 测试，观察 p 值是否近似服从均匀分布，如果显著的比例稳定在 5% 附近，说明系统正常；其二，在 AA 显著时同时检查样本比率（SRM 检验）、关键协变量分布（如新老用户比例、设备类型分布），如果这些维度也不对等，才说明分流环节确实有偏差，需要排查哈希函数、灰度配置或数据上报链路。</p>
+
+      <h3>Q2. 样本量算出来要跑两个月，业务等不及怎么办？</h3>
+
+      <p><strong>现象</strong>：按基线指标、目标 MDE 和 α = 0.05、功效 = 0.8 算下来，实验需要跑很长时间才能积累到足够样本，业务方希望尽快出结论。</p>
+
+      <p><strong>原因</strong>：样本量与 MDE 的平方成反比——MDE 越小，所需样本量呈指数级增长。如果原本的 MDE 设得过于保守（例如想检出 0.1 个百分点的微弱提升），样本量会迅速膨胀到不可执行。</p>
+
+      <p><strong>应对</strong>：几种常见的调整思路——其一，放宽 MDE，只承诺检出业务上真正有价值的效应量（比如把 MDE 从 0.1pp 放宽到 0.5pp），样本量会大幅下降；其二，引入<strong>方差缩减（Variance Reduction）</strong>方法，如 CUPED（Controlled-experiment Using Pre-Experiment Data），通过预实验期数据剥离掉用户本身的差异，在不增加样本量的前提下提升功效。</p>
+
+      <h3>Q3. 实验跑到一半，数据已经显著了，能不能提前结束？</h3>
+
+      <p><strong>现象</strong>：实验上线没几天就发现差异显著，业务方希望立即结束实验、全量上线策略。</p>
+
+      <p><strong>原因</strong>：这是典型的<strong>窥视问题（Peeking Problem）</strong>。α = 0.05 的阈值是在"预定样本量到达后只检验一次"的前提下推导出来的。在实验过程中反复检验，每次检验都有 5% 的假阳性概率，累积下来实际的第一类错误率会远超 0.05——也就是说，你看到的"显著"很可能是噪音被反复观察后偶然碰上的极端值。</p>
+
+      <p><strong>应对</strong>：严格按预定样本量执行是最干净的做法；如果业务确实需要中途观测，有两种合规方案——其一，使用<strong>序贯检验（Sequential Testing）</strong>方法（如 mSPRT、Always Valid Inference），从设计阶段就允许多次检验且控制整体错误率；其二，使用 <strong>α 修正方法</strong>（如 Pocock 边界、O'Brien-Fleming 边界），在不同检验时点设定不同的显著性阈值。临时改方案、临时停实验，得出的结论都不可信。</p>
+
+      <h3>Q4. 实验过程中触发了 SRM 报警，该怎么处理？</h3>
+
+      <p><strong>现象</strong>：实验上线后监控显示两组样本比率明显偏离设计预期（例如设计是 50:50，实际为 47:53），卡方检验拒绝了"比率相等"的假设。</p>
+
+      <p><strong>原因</strong>：常见情况包括分流哈希函数对某些特征不均匀、客户端日志在某一组中存在系统性丢失、灰度配置错误导致部分流量被错误划分、或异常流量在某一时段集中冲击。一旦出现 SRM，说明两组在事前已经不可比，后续所有的效应估计都失去了因果识别的基础。</p>
+
+      <p><strong>应对</strong>：正确的处理是<strong>立即暂停实验、排查根因、修复后重启</strong>，而不是继续累计样本期望"用大数定律稀释掉"——SRM 通常是系统性偏差，不会随样本量增加而消失。排查路径建议从数据上报链路开始（检查日志完整性），再到分流逻辑（检查哈希分布），最后到流量分配（检查灰度配置）。修复完成后，整个实验需要重新启动并重新累计样本，之前的数据不能合并使用。</p>
+
+      <h3>Q5. p 值卡在 0.05 附近，该不该拒绝原假设？</h3>
+
+      <p><strong>现象</strong>：实验结束后 p 值是 0.048 或 0.052，刚好在显著性阈值附近，机械化判断会让结论非常脆弱。</p>
+
+      <p><strong>原因</strong>：0.05 是一个人为约定的阈值，不是自然界的物理常数。p = 0.048 与 p = 0.052 在统计证据强度上几乎没有差别，机械地以阈值划线会丢失大量信息。同时，p 值本身也受样本量影响——样本量足够大时，任何微小效应都会变得"显著"。</p>
+
+      <p><strong>应对</strong>：把判断从"是否拒绝 H₀"转移到三个维度的联合判断上——其一，效应量（Δp̂）的<strong>业务意义</strong>是否足够，即使统计显著，如果效应只有 0.05%，可能不值得承担上线成本；其二，<strong>置信区间</strong>是否包含 0、区间的下界离 0 多远，这比 p 值更直观地反映效应稳定性；其三，<strong>过程指标与围栏指标</strong>是否同向支持，如果主指标边缘显著但过程指标全部正向，可信度更高，反之则需谨慎。结论的措辞也应当从"显著 / 不显著"换成"有 / 无足够证据支持上线决策"。</p>
+
+      <h3>Q6. 大盘不显著，但某个细分人群显著，能不能针对这群人上线？</h3>
+
+      <p><strong>现象</strong>：整体主指标没有显著变化，但事后拆分用户群体时，发现某一细分（如新用户、某个城市、某类设备）的指标显著提升。</p>
+
+      <p><strong>原因</strong>：这里存在两层风险。其一，<strong>多重检验问题</strong>——切分子群体相当于做多次假设检验，如果不做 α 修正，假阳性率会快速膨胀，所谓"显著"很可能是切到第 N 个子群时的偶然结果。其二，<strong>HARKing 风险</strong>（Hypothesizing After Results are Known，事后假设）——在看到结果之后才提出"策略对新用户更有效"这种假设，本质是用同一份数据既生成假设又验证假设，逻辑上不成立。</p>
+
+      <p><strong>应对</strong>：在原实验中事后发现的子群体差异，只能作为<strong>假设生成的线索</strong>，不能直接作为决策依据。规范的做法是——其一，基于这次发现重新设计一个针对该子群体的独立实验，用新数据进行验证；其二，如果业务上时间紧迫，可以在原实验中对该子群体单独做检验，但要明确做了 Bonferroni 或 FDR 修正，并诚实报告修正后的显著性。事前已声明的子群体分析（pre-registered subgroup analysis）不存在这个问题，事后挖掘出来的必须再验证一次。</p>
+
+      <h2>小结</h2>
+
+      <p>A/B 实验的核心，是用<strong>随机化</strong>解决"相关不等于因果"的问题，用<strong>假设检验</strong>解决"差异是真是噪音"的问题，用<strong>样本量测算</strong>解决"实验该跑多久"的问题。整个流程的每一步都对应着具体的统计学依据，理解这些依据，才能在工程实践中做出正确的设计与判断。</p>
+    </div>
+
+    <div class="art-next">
+      <span class="eyebrow">系列持续更新中</span>
+      <p>更多 A/B Testing 与因果推断的实战经验，持续整理中。</p>
+    </div>
+
+    <div style="margin-top:32px; text-align:center;">
+      <a href="index.html" style="font-family:'IBM Plex Mono',monospace; font-size:13.5px; color:var(--muted);">← 返回首页</a>
+    </div>
+  </div>
+</article>
+
+</body>
+</html>

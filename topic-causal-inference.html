@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>A/B Testing & 因果推断 · HCHTOTORO</title>
+<meta name="description" content="从原理到实战：A/B 实验基础原理、AI 产品实验踩坑，以及因果推断方法论系列。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpolygon points='50,18 86,82 14,82' fill='%231F7A6C'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700&family=Noto+Sans+SC:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F3F5F4; --paper-raised:#FFFFFF; --ink:#15202B;
+    --muted:#6B7280; --signal:#1F7A6C; --signal-soft:#DCEEE9;
+    --line:#D8DDD9; --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0; background:var(--paper); color:var(--ink); font-family:'Noto Sans SC', sans-serif; line-height:1.7; -webkit-font-smoothing:antialiased;}
+  a{color:var(--ink); text-decoration:none;}
+  a:focus-visible, button:focus-visible{outline:2px solid var(--signal); outline-offset:3px;}
+  .wrap{max-width:760px; margin:0 auto; padding:0 24px;}
+
+  .topbar{position:sticky; top:0; z-index:10; background:rgba(243,245,244,0.92); backdrop-filter:blur(6px); border-bottom:1px solid var(--line);}
+  .topbar .wrap{max-width:880px; display:flex; align-items:center; justify-content:space-between; height:56px;}
+  .wordmark{font-family:'IBM Plex Mono', monospace; font-size:13px; font-weight:600; letter-spacing:0.06em; color:var(--ink);}
+  .wordmark span{color:var(--signal);}
+  .back-link{font-size:13.5px; color:var(--muted);}
+  .back-link:hover{color:var(--signal);}
+
+  .eyebrow{font-family:'IBM Plex Mono', monospace; font-size:12.5px; letter-spacing:0.12em; color:var(--signal); text-transform:uppercase; display:block; margin-bottom:16px;}
+  main{padding:56px 0 80px;}
+  h1{font-family:'Noto Serif SC', serif; font-size:30px; font-weight:700; line-height:1.4; margin:0 0 16px;}
+  .intro{max-width:600px; color:#2c3744; font-size:15px; margin-bottom:36px;}
+
+  .series-list{border-top:1px solid var(--line);}
+  .post-row{display:grid; grid-template-columns:36px 1fr 96px; align-items:start; gap:18px; padding:22px 0; border-bottom:1px solid var(--line);}
+  .post-num{font-family:'IBM Plex Mono', monospace; font-size:13px; color:var(--muted); padding-top:3px;}
+  .post-row.published .post-num{color:var(--signal); font-weight:600;}
+  .post-title{display:block; font-size:16px; font-weight:600; color:var(--ink); margin-bottom:6px;}
+  .post-title.muted{color:#9aa0a6;}
+  a.post-title:hover{color:var(--signal);}
+  .post-excerpt{margin:0; font-size:14px; color:var(--muted); line-height:1.6;}
+  .post-status{font-family:'IBM Plex Mono', monospace; font-size:11.5px; color:var(--muted); text-align:right; padding-top:4px;}
+  .post-row.published .post-status{color:var(--signal);}
+
+  @media (max-width:640px){
+    h1{font-size:25px;}
+    .post-row{grid-template-columns:1fr; gap:6px;}
+    .post-status{text-align:left;}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap">
+    <a class="wordmark" href="index.html">Δ <span>Data × AI × Evals × Business</span></a>
+    <a class="back-link" href="index.html#series">← 返回首页</a>
+  </div>
+</div>
+
+<main>
+  <div class="wrap">
+    <span class="eyebrow">A/B Testing & 因果推断 · 持续更新</span>
+    <h1>A/B Testing & 因果推断</h1>
+    <p class="intro">从原理到实战：系统梳理 A/B 实验的统计学基础、AI 产品实验的踩坑点，以及因果推断方法论。</p>
+
+    <div class="series-list">
+      <div class="post-row published">
+        <span class="post-num">01</span>
+        <div class="post-body">
+          <a class="post-title" href="article-ab-testing-basics.html">A/B 实验的基础原理与完整流程</a>
+          <p class="post-excerpt">从假设构建到统计推断，系统梳理 A/B 实验的标准流程与背后的统计学原理。</p>
+        </div>
+        <span class="post-status">已发布</span>
+      </div>
+      <div class="post-row published">
+        <span class="post-num">02</span>
+        <div class="post-body">
+          <a class="post-title" href="article-ab-testing-ai.html">AI 产品做 A/B Testing 时的陷阱与易错点</a>
+          <p class="post-excerpt">LLM 对话产品中「分流先于场景识别」的结构性问题，以及如何在实验设计和评估中应对。</p>
+        </div>
+        <span class="post-status">已发布</span>
+      </div>
+      <div class="post-row">
+        <span class="post-num">03</span>
+        <div class="post-body">
+          <span class="post-title muted">当无法随机化：倾向得分匹配（PSM）怎么用</span>
+          <p class="post-excerpt">业务场景里很多时候没法做 AB，PSM 是怎么"造出"一个可比较的对照组的。</p>
+        </div>
+        <span class="post-status">即将发布</span>
+      </div>
+      <div class="post-row">
+        <span class="post-num">04</span>
+        <div class="post-body">
+          <span class="post-title muted">双重差分（DID）：用前后对比代替随机化</span>
+          <p class="post-excerpt">没有个体层面的对照组，但有时间维度，DID 怎么借时间做文章。</p>
+        </div>
+        <span class="post-status">即将发布</span>
+      </div>
+      <div class="post-row">
+        <span class="post-num">05</span>
+        <div class="post-body">
+          <span class="post-title muted">工具变量（IV）：当 X 本身被混淆</span>
+          <p class="post-excerpt">连"是否被处理"这件事本身都不干净时，还能不能估出因果效应。</p>
+        </div>
+        <span class="post-status">即将发布</span>
+      </div>
+    </div>
+  </div>
+</main>
+
+</body>
+</html>

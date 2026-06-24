@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AB 实验的起点:随机化为什么能消除混淆 · Δ Signal</title>
+<meta name="description" content="因果推断笔记系列第一篇:从混淆问题讲起,拆解随机化为什么能让我们从相关走向因果。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpolygon points='50,18 86,82 14,82' fill='%231F7A6C'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700&family=Noto+Sans+SC:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F3F5F4;
+    --paper-raised:#FFFFFF;
+    --ink:#15202B;
+    --muted:#6B7280;
+    --signal:#1F7A6C;
+    --signal-soft:#DCEEE9;
+    --line:#D8DDD9;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:'Noto Sans SC', sans-serif; line-height:1.7;
+    -webkit-font-smoothing:antialiased;
+  }
+  .mono{font-family:'IBM Plex Mono', monospace;}
+  a{color:var(--ink); text-decoration:none;}
+  a:focus-visible, button:focus-visible{outline:2px solid var(--signal); outline-offset:3px;}
+  .wrap{max-width:680px; margin:0 auto; padding:0 24px;}
+
+  .topbar{
+    position:sticky; top:0; z-index:10;
+    background:rgba(243,245,244,0.92); backdrop-filter:blur(6px);
+    border-bottom:1px solid var(--line);
+  }
+  .topbar .wrap{
+    max-width:880px;
+    display:flex; align-items:center; justify-content:space-between; height:56px;
+  }
+  .wordmark{font-family:'IBM Plex Mono', monospace; font-size:13px; font-weight:600; letter-spacing:0.06em; color:var(--ink);}
+  .wordmark span{color:var(--signal);}
+  .back-link{font-size:13.5px; color:var(--muted);}
+  .back-link:hover{color:var(--signal);}
+
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace; font-size:12.5px;
+    letter-spacing:0.12em; color:var(--signal); text-transform:uppercase;
+    display:block; margin-bottom:16px;
+  }
+  article{padding:56px 0 80px;}
+  h1{
+    font-family:'Noto Serif SC', serif; font-size:30px; font-weight:700;
+    line-height:1.4; margin:0 0 16px;
+  }
+  .art-meta{
+    font-family:'IBM Plex Mono', monospace; font-size:12.5px;
+    color:var(--muted); margin-bottom:40px;
+    padding-bottom:24px; border-bottom:1px solid var(--line);
+  }
+  .art-body h2{
+    font-family:'Noto Serif SC', serif; font-size:20px; font-weight:700;
+    margin:40px 0 14px;
+  }
+  .art-body p{font-size:16px; color:#2c3744; margin:0 0 18px;}
+  .art-body strong{color:var(--ink);}
+
+  .art-next{
+    margin-top:48px; padding:24px 26px;
+    border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--paper-raised);
+  }
+  .art-next .eyebrow{margin-bottom:8px;}
+  .art-next p{margin:0; font-size:14.5px; color:var(--muted);}
+
+  @media (max-width:640px){
+    h1{font-size:25px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap">
+    <a class="wordmark" href="index.html">Δ <span>SIGNAL</span></a>
+    <a class="back-link" href="index.html#series">← 返回系列列表</a>
+  </div>
+</div>
+
+<article>
+  <div class="wrap">
+    <span class="eyebrow">Series · 01 / 因果推断笔记</span>
+    <h1>AB 实验的起点:随机化为什么能消除混淆</h1>
+    <div class="art-meta">2026年6月 · 阅读约 6 分钟</div>
+
+    <div class="art-body">
+      <p>"AB 实验不就是分两组,看哪边数据好" —— 这句话大概每个做数据分析的人都说过。但很少有人能讲清楚:为什么"随机分组"这一个动作,就能让我们从"相关"走到"因果"。这篇笔记想把这件事拆开揉碎讲一遍。</p>
+
+      <h2>先把问题摆清楚:相关不等于因果</h2>
+      <p>设想某天上线了一个新功能,同时观察到留存率上升了。能不能直接说是这个功能带来的提升?不一定——因为同一时间段里,可能还发生了很多别的事:节假日、投放渠道结构变化、新老用户构成变化。如果这些"别的事"同时影响了"是否上线新功能"和"留存率"本身,这种情况就叫<strong>混淆(confounding)</strong>。</p>
+      <p>混淆的本质是:处理组和对照组在"是否接受处理"之外,还在某些会影响结果的维度上系统性地不一样。这种不一样,会被我们错误地归因到"处理"本身上。</p>
+
+      <h2>随机化做了什么</h2>
+      <p>随机化的核心动作只有一件:让"谁进入处理组"这件事,变成一枚跟其他任何因素都无关的硬币。</p>
+      <p>这意味着,只要样本量足够大,处理组和对照组在所有可观测、不可观测的维度上,从期望(expectation)的意义上看是<strong>可交换的(exchangeable)</strong>——不是说每一个个体都完全对称,而是两组在事前的分布是一致的。</p>
+      <p>这正是 AB 实验"干净"的来源:实验结束后两组的差异,理论上只剩一个解释——是否被处理。混淆因素被随机化"平均"掉了,不再系统性地偏向某一组。</p>
+
+      <h2>一个容易被忽略的细节</h2>
+      <p>随机化保证的是<strong>无偏(unbiased)</strong>,不是保证每一次实验两组都恰好均衡。小样本下,即使做了随机分组,某个特征(比如新用户占比)也完全可能因为随机噪音凑巧在两组间不平衡。</p>
+      <p>这也是为什么实验设计里经常会做分层随机化(stratified randomization),或者在分析阶段做协变量调整——目的不是替代随机化,而是降低随机噪音带来的方差,让估计更精确。</p>
+
+      <h2>为什么这件事对评估 AI 系统也重要</h2>
+      <p>如果以后要判断一个 Agent 或大模型的某次改动是否真的带来了提升,本质上要回答同一个问题:观察到的差异,是改动带来的,还是混杂因素带来的?随机化的逻辑,以及"什么时候随机化做不到、要用什么工具去替代它"——这正是接下来几篇要继续写的内容。</p>
+    </div>
+
+    <div class="art-next">
+      <span class="eyebrow">下一篇预告</span>
+      <p>真实业务里很多时候没法做 AB(政策性功能、伦理限制、历史数据已经产生),这时候怎么"事后"构造一个干净的对照组?下一篇会讲倾向得分匹配(PSM)具体在做什么 —— 即将发布。</p>
+    </div>
+  </div>
+</article>
+
+</body>
+</html>

@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI 产品做 A/B Testing 时的陷阱与易错点 · HCHTOTORO</title>
+<meta name="description" content="AI 产品(尤其是 LLM 对话类)做 A/B 实验时,分流那一刻无法预知用户场景,会让实验设计、监控、评估每一环都踩坑。">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Cpolygon points='50,18 86,82 14,82' fill='%231F7A6C'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@600;700&family=Noto+Sans+SC:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --paper:#F3F5F4;
+    --paper-raised:#FFFFFF;
+    --ink:#15202B;
+    --muted:#6B7280;
+    --signal:#1F7A6C;
+    --signal-soft:#DCEEE9;
+    --line:#D8DDD9;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:'Noto Sans SC', sans-serif; line-height:1.7;
+    -webkit-font-smoothing:antialiased;
+  }
+  a{color:var(--ink); text-decoration:none;}
+  a:focus-visible{outline:2px solid var(--signal); outline-offset:3px;}
+  .wrap{max-width:680px; margin:0 auto; padding:0 24px;}
+
+  .topbar{
+    position:sticky; top:0; z-index:10;
+    background:rgba(243,245,244,0.92); backdrop-filter:blur(6px);
+    border-bottom:1px solid var(--line);
+  }
+  .topbar .wrap{
+    max-width:880px;
+    display:flex; align-items:center; justify-content:space-between; height:56px;
+  }
+  .wordmark{font-family:'IBM Plex Mono', monospace; font-size:13px; font-weight:600; letter-spacing:0.06em; color:var(--ink);}
+  .wordmark span{color:var(--signal);}
+  .back-link{font-size:13.5px; color:var(--muted);}
+  .back-link:hover{color:var(--signal);}
+
+  .eyebrow{
+    font-family:'IBM Plex Mono', monospace; font-size:12.5px;
+    letter-spacing:0.12em; color:var(--signal);
+    display:block; margin-bottom:16px;
+  }
+  article{padding:56px 0 80px;}
+  h1{
+    font-family:'Noto Serif SC', serif; font-size:30px; font-weight:700;
+    line-height:1.4; margin:0 0 16px;
+  }
+  .art-meta{
+    font-family:'IBM Plex Mono', monospace; font-size:12.5px;
+    color:var(--muted); margin-bottom:40px;
+    padding-bottom:24px; border-bottom:1px solid var(--line);
+  }
+  .art-body h2{
+    font-family:'Noto Serif SC', serif; font-size:22px; font-weight:700;
+    margin:48px 0 14px;
+  }
+  .art-body h3{
+    font-family:'Noto Serif SC', serif; font-size:18px; font-weight:700;
+    color:var(--ink); margin:32px 0 10px;
+  }
+  .art-body h4{
+    font-family:'Noto Sans SC', sans-serif; font-size:16px; font-weight:700;
+    color:var(--signal); margin:24px 0 8px;
+  }
+  .art-body p{font-size:16px; color:#2c3744; margin:0 0 18px; line-height:1.8;}
+  .art-body strong{color:var(--ink);}
+  .art-body ul{
+    margin:0 0 18px; padding-left:20px;
+  }
+  .art-body li{
+    font-size:16px; color:#2c3744; margin-bottom:8px; line-height:1.8;
+  }
+  .art-body blockquote{
+    margin:24px 0; padding:16px 20px;
+    background:var(--signal-soft);
+    border-left:3px solid var(--signal);
+    border-radius:0 var(--radius) var(--radius) 0;
+  }
+  .art-body blockquote p{
+    margin:0 0 10px; font-size:15px;
+  }
+  .art-body blockquote p:last-child{margin:0;}
+
+  .art-next{
+    margin-top:48px; padding:24px 26px;
+    border:1px solid var(--line); border-radius:var(--radius);
+    background:var(--paper-raised);
+  }
+  .art-next .eyebrow{margin-bottom:8px;}
+  .art-next p{margin:0; font-size:14.5px; color:var(--muted);}
+
+  @media (max-width:640px){
+    h1{font-size:25px;}
+  }
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="wrap">
+    <a class="wordmark" href="index.html">Δ <span>Data × AI × Evals × Business</span></a>
+    <a class="back-link" href="index.html#series">← 返回首页</a>
+  </div>
+</div>
+
+<article>
+  <div class="wrap">
+    <span class="eyebrow">A/B Testing & 因果推断 · 实战经验</span>
+    <h1>AI 产品做 A/B Testing 时的陷阱与易错点</h1>
+    <div class="art-meta">2026年6月 · 阅读约 10 分钟</div>
+
+    <div class="art-body">
+      <p>A/B 实验在静态产品形态里已经被打磨得非常成熟——一个按钮的颜色、一段文案的措辞、一个落地页的版式，分流之后两组用户面对的是确定的、可观测的差异，效果评估也有一整套现成的方法论。</p>
+
+      <p>但当实验对象从这些静态元素，变成一个 LLM 驱动的对话产品，情况就不一样了。最关键的差别在于：传统 A/B 实验中，用户在分流进组的那一刻，就已经被展示了不同的策略；而在 LLM 对话产品里，分流早于用户意图的暴露——分流那一刻，我们并不知道这个用户究竟要做什么。</p>
+
+      <p><strong>这种「分流先于场景和意图识别」的结构性错位</strong>，会沿着实验全流程往下传导，影响样本量测算、过程监控、以及最终的效果评估。</p>
+
+      <p>在这篇文章中，我梳理了自己在做 AI 对话类产品 A/B 实验的经验，沿着「为什么是个问题 → 实验前怎么办 → 实验中盯什么 → 评估时怎么算」这条线展开，分享在实战过程中的思考。</p>
+
+      <h2>问题从哪里来</h2>
+
+      <p>前面我们提到，AI 对话类产品，分流时机先于用户意图场景的识别，我们先以智能客服对话场景为例，来看看问题到底是什么。</p>
+
+      <p>以一个本地生活业务的智能客服 LLM Bot 为例，这类产品的用户意图大致可以分成几类：</p>
+
+      <ul>
+        <li><strong>售前咨询</strong>：团购详情、能不能用、有效期、能否叠加优惠</li>
+        <li><strong>核销 / 履约</strong>：到店出示码失败、店家不认、超时未核销</li>
+        <li><strong>退款诉求</strong>：过期未消费、商家关店、体验不符合预期</li>
+        <li><strong>订单状态查询</strong>：已支付未到账、订单消失</li>
+        <li><strong>投诉维权</strong>：强制消费、菜品与图片严重不符、欺诈</li>
+      </ul>
+
+      <p>每类场景的用户情绪、问题结构、解决路径都完全不一样：售前是轻量决策，退款是带情绪的诉求，投诉是高情绪 + 高复杂度。</p>
+
+      <p>现在假设我们要做一次实验：针对退款场景，我们调整了一版新的 Prompt 策略，目标是提升这个场景下的解决率、满意度、降低转人工率。策略细节先不展开，重点是它只在 LLM 识别到「退款意图」时才生效。</p>
+
+      <p>假设退款意图占整个会话大盘的比例大约是 30%，那么问题来了，我们在分流那一刻面对的是一个刚刚发起会话的用户，这时候用户的意图还没被识别，这就导致一个<strong>直接后果：实验组里有 70% 的用户根本不会触发你的策略，他们带来的数据全是噪音。</strong></p>
+
+      <blockquote>
+        <p><strong>核心矛盾</strong>：分流是在用户级别全量进行的，但策略只对部分场景生效。如果你按全量进组人数计算实验指标，大概率会得出"策略无效"的错误结论——不是因为策略真的没用，而是因为有效信号被无关样本稀释掉了。</p>
+      </blockquote>
+
+      <p>下面分三个部分来讲下如何应对这个问题，才能保证实验的评估结果是科学的。</p>
+
+      <h2>实验前：分流单元和样本量怎么定</h2>
+
+      <h3>分流单元仍然要坚持「用户级」，不能下放到「会话级」</h3>
+
+      <p>这是第一个易错的地方。看到"只有部分会话会命中场景"，可能会想是不是用会话级分流就可以了？答案是不可以。</p>
+
+      <p>会话级分流之所以走不通，本质上是因为它<strong>违反了 A/B 实验的 SUTVA 假设（Stable Unit Treatment Value Assumption，稳定个体处理值假设）</strong>。</p>
+
+      <p>SUTVA 包含两个前提：<strong>一是不同个体之间的处理互不干扰（no interference），二是每个个体接受的处理是稳定且可定义的（consistency）</strong>。会话级分流在这两条上都会出问题：</p>
+
+      <ul>
+        <li><strong>稳定性被破坏</strong>：同一个用户、意图相同的两次会话可能被分到不同组，这次走新策略、下次走老策略——用户接受的不是一个稳定的策略，在同一场景下体验不一致。</li>
+        <li><strong>无干扰假设被破坏</strong>：同一用户的多次会话在行为、情绪、问题类型上是高度相关的，前一次会话的体验会影响后一次的状态，样本之间存在系统性干扰，不再是独立观测。把这些相关样本当成独立样本去做显著性检验，p 值会失真，功效计算也不可信。</li>
+      </ul>
+
+      <p>除此之外，当我们需要观测策略的变动对用户长期价值的影响时，计算会话级指标会导致<strong>长周期指标无法归因</strong>。</p>
+
+      <p>比如，客服平台需要监控用户体验对平台的长期留存和 NPS 的影响。留存、NPS 等指标是用户级的：一个用户要么留存、要么流失，要么打高分、要么打低分，这些只能挂在"用户"这个分析单元上，而不是某一次会话上。</p>
+
+      <p>如果分流单元是会话，同一个用户的多次会话可能分别被分到实验组和对照组，那么这个用户最终的留存或 NPS 结果，到底应该算实验组的功劳还是对照组的功劳？我们根本无法拆分干净。</p>
+
+      <p><strong>所以，即便策略只对部分场景生效，分流单元也应当保持「用户级」。会话级别的拆分应该放到分析阶段，而不是分流阶段。</strong></p>
+
+      <h3>样本量和实验周期，要按「真实触达量」算</h3>
+
+      <p>测算样本量的常规做法是：先定一个 MDE（最小可检测效应，Minimum Detectable Effect），再根据基线指标、显著性水平、统计功效，反推所需样本量，然后用目标群体的日活除一下，得到实验周期。</p>
+
+      <p>但在 LLM 对话产品里，分流时机先于场景识别——这就带来一个问题：这里的「基线指标」和「样本量」，到底应该取全量用户的，还是真正会被策略触达的那部分用户的？</p>
+
+      <p>答案必须是后者。如果你按全量用户算样本量，你估出来的周期会严重低估实验真实需要的时间。</p>
+
+      <p>原因：<strong>策略只对退款场景生效，所以能产生差异信号的只有那 30% 的样本；另外 70% 的样本在两组里的表现是完全一致的，只会贡献方差、不贡献效应。</strong></p>
+
+      <blockquote>
+        <p><strong>正确的算法是：把目标场景的分布占比当作一个折扣系数，加到样本量测算里。</strong></p>
+        <p>例如，如果按"退款场景"的基线和预期 MDE 算出需要 N 条会话，而退款只占大盘的 30%，那么大盘总会话数至少要达到 N / 0.3，实验周期对应地要拉长 3 倍多。这一步如果略过，实验跑完后大概率得到一个"看起来没显著"的结果，但其实你只是没跑够。</p>
+      </blockquote>
+
+      <h2>实验中：除了常规指标，还要盯样本结构</h2>
+
+      <p>常规的 A/B 实验过程监控，关注的是目标指标、过程指标和围栏指标（guardrail metrics）。这套在 AI 产品里依然要用，但<strong>需要额外加一项：实验组和对照组的样本场景分布是否一致。</strong></p>
+
+      <p>具体来说，要监控的是：实验组里"退款场景"的占比，跟对照组里"退款场景"的占比，有没有显著差异。</p>
+
+      <p>理论上，因为分流是用户级随机的，两组在所有维度上的分布期望是一致的，目标场景占比当然也应该一致。但实践里，这个指标常常会偏——原因可能很多：</p>
+
+      <ul>
+        <li>分流哈希存在 bug，某种用户特征被系统性地分到了某一组</li>
+        <li>某个时间窗口出现了异常流量</li>
+      </ul>
+
+      <p>这种情况就是<strong>样本比率偏差（SRM，Sample Ratio Mismatch）</strong>。一旦出现 SRM，后面所有的效应估计都不再可信——因为两组已经不可比了。</p>
+
+      <p>所以最好在实验开始后的前一两天就开始监控这个指标，一旦发现两组场景占比差异在统计上显著，实验就应该暂停排查，而不是继续跑下去。</p>
+
+      <h2>试验后：构建可信的评估体系，从样本稀释中识别真实效应</h2>
+
+      <p>这是整个流程里最容易出现"看错结论"的环节。回到开头那个矛盾：大盘有 70% 的样本对策略无感，如果直接对比两组的大盘指标，真实效应会被稀释到几乎看不见。</p>
+
+      <h3>全面评估：大盘、触达场景、未触达场景三份指标一起看</h3>
+
+      <p>实验复盘时，我一般会同时输出三份指标：</p>
+
+      <ul>
+        <li><strong>大盘指标</strong>：实验组 vs 对照组，所有进组用户的整体表现，回答"这个策略给业务整体带来了多大的实际变化"</li>
+        <li><strong>触达场景的指标</strong>：只取两组中命中目标场景的用户数据来对比，回答"策略本身在目标场景下到底有没有效"</li>
+        <li><strong>未触达场景的指标</strong>：看那些没有命中目标场景的数据，作为<strong>安慰剂对照（placebo check）</strong>——这部分按理说不应该被策略影响，指标在两组之间预期没有显著差异</li>
+      </ul>
+
+      <p>三份指标加起来才能完整地讲清楚一个策略的效果。</p>
+
+      <p>一个常见的错误是只看大盘——结果可能是"有效样本下指标涨了 8%，但大盘只涨了 2%，边界刚好不显著"，于是策略被误判为无效。</p>
+
+      <p>而加上未触达场景指标，可以反向验证我们的判断：如果未触达场景在两组之间真的没有显著差异，就说明"大盘涨幅小"这件事确实是稀释造成的，不是策略本身的问题；反过来，如果未触达场景出现了意料之外的差异，就要警惕——可能是策略对模型整体行为产生了我们没预料到的溢出影响，也可能是分流本身出了问题。</p>
+
+      <h3>从大盘涨幅判断真实效应</h3>
+
+      <p>如果策略真的有效，即便被稀释，大盘指标的变动方向也应该和触达场景的有效样本一致。</p>
+
+      <blockquote>
+        <p>可以用结构占比做一次校验：大盘预期涨幅 ≈ 有效样本涨幅 × 场景占比。</p>
+      </blockquote>
+
+      <p>比如触达场景下解决率涨 10%，退款场景占大盘 30%，那大盘解决率的预期涨幅就在 3% 左右。如果实际大盘涨幅明显低于这个数，通常有几种可能原因需要逐一排查：</p>
+
+      <ul>
+        <li><strong>策略在其他场景下产生了负向溢出</strong>：虽然策略只在退款场景生效，但如果策略调整涉及模型 prompt 的整体改动，可能间接影响了其他场景的输出。需要按场景拆开看每一类的指标，确认是哪类场景在拖后腿，再判断是不是要把这部分负向影响剥离后再看整体效果。</li>
+        <li><strong>外部干扰因素污染了大盘指标</strong>：大盘指标对外部环境敏感——比如实验期间撞上大促、节假日、平台政策变化、商家侧问题集中爆发等，会让其他场景的基线波动，稀释甚至盖过策略本身带来的提升。</li>
+        <li><strong>场景识别本身在两组中出现了偏差</strong>："退款场景占比 30%"是模型实时判断的结果，如果意图识别在两组中表现不对等，那"30%"这个分母在两组里就不可比了，所有基于场景的指标计算都会失真。</li>
+      </ul>
+
+      <h3>必要时引入协变量</h3>
+
+      <p>在评估有效样本时，还有一个容易忽略的细节：命中目标场景的用户，本身就不是随机抽样的——他们是被 LLM 的意图识别"挑出来"的。如果意图识别本身在两组的表现略有差异，那两组的"有效样本"就不再可比了，会引入<strong>样本选择偏差（selection bias）</strong>。</p>
+
+      <p>这里建议在评估阶段引入<strong>协变量（covariates）</strong>做控制——比如用户的历史活跃情况、咨询类型分布、订单数量、近期是否有过退款记录等。</p>
+
+      <p>具体方法可以用 CUPED（Controlled-experiment Using Pre-Experiment Data）或者直接做回归调整，核心思路都是把那些可观测的、本来就会影响指标的因素先剥离掉，剩下的差异才更接近"策略真实带来的增量"。</p>
+
+      <h3>全量上线后的效果验收</h3>
+
+      <p>实验跑完、策略全量上线之后，事情还没结束。全量后真实表现常常会被外部因素干扰——节假日、平台大促、政策变化、客诉公关事件，都可能让大盘指标看起来"不如实验时漂亮"。</p>
+
+      <p>处理办法是：<strong>实验阶段就把效应的置信区间记录下来。全量上线后观察大盘表现，看是不是落在那个区间内。</strong>在区间内就可以认为策略表现符合预期，差异来自外部噪音；明显偏出区间下沿，才需要重新评估策略本身是不是出了问题。</p>
+
+      <h2>小结</h2>
+
+      <p>把上面四段串起来，本质都是一件事：因为分流先于场景识别，有效信号会被无关样本稀释。所以从样本量测算、过程监控，到效果评估、全量验证，每一步都要把这个特性纳入到实验设计与效果评估的过程中——</p>
+
+      <ul>
+        <li>样本量按真实触达量算，而不是按全量进组人数</li>
+        <li>过程监控里加上样本场景分布，防 SRM</li>
+        <li>评估时三份指标并行，稀释效应用结构占比反推校验</li>
+        <li>引入协变量控制场景识别带来的选择偏差</li>
+        <li>用实验区间作为全量上线后的判定基准</li>
+      </ul>
+
+      <p>综上，这套方法论并不局限于 AI 产品——任何「策略只对部分用户生效、但分流必须在全量层面随机」的实验，都会面对相同的结构性问题。我们在设计实验和评估结果时，需要进行对应的调整，这样得出的结论才更经得起推敲。</p>
+    </div>
+
+    <div class="art-next">
+      <span class="eyebrow">系列持续更新中</span>
+      <p>更多 A/B Testing 与因果推断的实战经验，持续整理中。</p>
+    </div>
+
+    <div style="margin-top:32px; text-align:center;">
+      <a href="index.html" style="font-family:'IBM Plex Mono',monospace; font-size:13.5px; color:var(--muted);">← 返回首页</a>
+    </div>
+  </div>
+</article>
+
+</body>
+</html>
